@@ -7,6 +7,7 @@ class SpeechToText {
         this.audioContext = new window.AudioContext();
     }
 
+    /*
     //this can only be called from the background script
     static ensureRecorderTab(initiatorTabId) {
         const recorderTabTitle = "Voice Command";
@@ -18,13 +19,13 @@ class SpeechToText {
                 //send message to recorderTab to initiate captureAudio()
                 this._initiateCaptureAudio(recorderTab.id, initiatorTabId);
             } else {
-                /*We need to send a message to the recorderTab once it has been created AND it has finished
+                We need to send a message to the recorderTab once it has been created AND it has finished
                 adding its message listener functions. If we send the message too early the message may get
                 dropped (because there is no listener for it). Additionally, we need to pass through the "initiatorTabId". 
                 To solve this we add a listener here for updates to tabs. We must add the update listener first because there
                 is a race condition between when the newly created tab is complete and when we add the tab updated listener.
                 Once we have detected that the recorderTab has completely loaded we know it has a listener registered and it 
-                is safe to send it a message.*/
+                is safe to send it a message.
                 let recorderTabId = -1;
                 let recorderTabOnUpdatedListener = (tabId, info, tab) => {
                     //Ignore updates to any tab but the recorderTab
@@ -48,7 +49,7 @@ class SpeechToText {
             }
         });
     }
-
+    
     static closeRecorderTab() {
         chrome.tabs.query({ title: "Voice Command" }, (tabs) => {
             chrome.tabs.remove(tabs[0].id);
@@ -68,6 +69,7 @@ class SpeechToText {
         });
     }
 
+    
     static _setUiStateToListening(initiatorTabId, recordTimeInMs) {
         chrome.tabs.sendMessage(initiatorTabId, {
             type: MessageTypes.StartLoadingBar,
@@ -76,7 +78,8 @@ class SpeechToText {
             recordTimeInMs: recordTimeInMs
         });
     }
-
+     */
+    
     _getAudioResponse(xhrResponse) {
         let response = JSON.parse(xhrResponse);
         let result = response.results[0];
@@ -182,32 +185,17 @@ class SpeechToText {
         return audioPromise;
     }
 
-    startSpeechToText(initiatorTabId) {
+    startSpeechToText() {
         let speechPromise = new Promise((resolve, reject) => {
-            let settingsModel = new SettingsModel();
-            settingsModel.loadSettings()
-            .then(() => {
-                // Grab the latest recording time users preference from settings.
-                let recordTimeInMs = settingsModel.getValue('listeningTimeInMs');
-
                 navigator.mediaDevices
                     .getUserMedia({
                         audio: true
                     })
                     .then((stream) => {
-                        document.getElementById("explanation").innerText = "";
-
-                        SpeechToText._setTabToActiveState(initiatorTabId, true);
-                        SpeechToText._setUiStateToListening(initiatorTabId, recordTimeInMs);
-
                         let audioInput = this.audioContext.createMediaStreamSource(stream);
                         let rec = new Recorder(audioInput);
                         rec.record();
                         setTimeout(() => {
-
-                            //sends message to the active tab to switch to "processing" state
-                            chrome.tabs.sendMessage(initiatorTabId, { type: MessageTypes.DisplayProcessing });
-
                             rec.stop();
                             rec.exportWAV((blob) => {
                                 this.getToken()
@@ -217,19 +205,21 @@ class SpeechToText {
                                                 resolve(audioResponse);
                                             })
                                             .catch((errorObject) => {
+                                            	console.log(errorObject.description);
                                                 reject(errorObject);
                                             });
                                     })
                                     .catch((errorObject) => {
+                                    	console.log(errorObject.description);
                                         reject(errorObject);
                                     });
                             });
-                        }, recordTimeInMs);
+                        });
                     })
                     .catch((errorObject) => {
+                    	console.log(errorObject.description);
                         reject(this._getUserMediaError(errorObject));
                     });
-            });
         });
         return speechPromise;
     }
